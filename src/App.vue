@@ -1,17 +1,23 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+  <div id="app">
+    <ConnectWallet />
+    <ContractInfo />
+    <MintNFT />
+  </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import ContractInfo from "./components/ContractInfo.vue";
+import ConnectWallet from "./components/ConnectWallet.vue";
 
 export default {
-  name: 'App',
+  name: "App",
   components: {
-    HelloWorld
-  }
-}
+    ConnectWallet,
+    // MintNFT,
+    ContractInfo,
+  },
+};
 </script>
 
 <style>
