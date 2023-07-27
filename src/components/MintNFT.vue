@@ -12,13 +12,15 @@
 </template>
 
 <script>
-import Web3 from "web3";
+import { ethers } from "ethers";
 import { MERCHANT_REGISTRY_ABI, MERCHANT_REGISTRY_ADDRESS } from "../config";
+import { RelayProvider, wrapContract } from "@opengsn/provider";
 
-const web3 = new Web3(window.ethereum);
+let provider;
+let contract;
+
 const contractAddress = MERCHANT_REGISTRY_ADDRESS;
-const contractAbi = MERCHANT_REGISTRY_ABI;
-const tokenAddress = "0x0000000000000000000000000000000000000000"; // ETH
+const contractAbi = MERCHANT_REGISTRY_ABI[0].abi;
 
 export default {
   data() {
@@ -32,26 +34,55 @@ export default {
       category: "",
     };
   },
+  created: async function () {
+    if (window.ethereum) {
+      try {
+        const gsnConfig = {
+          paymasterAddress: "0x3BFE9d8CDA5B3cA161720cD47d3EE56c061d30fD",
+          forwarderAddress: "0x19cAC08A8f200e2eB89D5A41F9243793D77E2deb",
+        };
+        const gsnProvider = await RelayProvider.newProvider({
+          provider: window.ethereum,
+          config: gsnConfig,
+        });
+        await gsnProvider.init();
+        provider = new ethers.getDefaultProvider(gsnProvider);
+
+        await window.ethereum.enable(); // Request account access
+        const merchantRegistryContract = new ethers.Contract(
+          contractAddress,
+          contractAbi,
+          await provider.getSigner()
+        );
+
+        contract = await wrapContract(merchantRegistryContract, gsnConfig);
+      } catch (error) {
+        console.error("Failed to enable ethereum or create contract:", error);
+      }
+    } else {
+      console.log(
+        "Non-Ethereum browser detected. You should consider trying MetaMask!"
+      );
+    }
+  },
   methods: {
     mint: async function () {
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-      const contract = new web3.eth.Contract(contractAbi, contractAddress);
-      const merchant = {
-        id: parseInt(this.merchantId),
-        merchantAddress: this.merchantAddress,
-        name: this.merchantName,
-        latitude: parseInt(this.latitude),
-        longitude: parseInt(this.longitude),
-        physicalAddress: this.physicalAddress,
-        category: parseInt(this.category),
-      };
+      const merchant = [
+        parseInt(this.merchantId),
+        this.merchantAddress,
+        this.merchantName,
+        parseInt(this.latitude),
+        parseInt(this.longitude),
+        this.physicalAddress,
+        parseInt(this.category),
+      ];
       try {
-        await contract.methods.mint(merchant, tokenAddress).send({
-          from: accounts[0],
-          value: web3.utils.toWei("0.01", "ether"),
+        // const signer = await provider.getSigner();
+        const tokenAddress = ethers.ZeroAddress; // ETH
+        const tx = await contract.mint(merchant, tokenAddress, {
+          value: ethers.parseEther("0.1"),
         });
+        await tx.wait(); // Wait for transaction to be mined
       } catch (error) {
         console.error("Minting failed:", error);
       }

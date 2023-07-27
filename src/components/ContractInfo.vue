@@ -1,10 +1,7 @@
 <template>
   <div>
-    <button @click="getRegistrationFeeUsd">Get Registration Fee</button>
-    <button @click="getMerchantData(1)">Get Merchant Data</button>
-    <!-- assuming 1 is a valid merchantId -->
-    <div v-for="method in contractMethods" :key="method" class="method">
-      {{ method }}
+    <div v-if="registrationFeeUsd">
+      Registration Fee: USD$ {{ registrationFeeUsd }}
     </div>
   </div>
 </template>
@@ -19,7 +16,7 @@ let contract;
 export default {
   data: function () {
     return {
-      contractMethods: [],
+      registrationFeeUsd: null,
     };
   },
   created: async function () {
@@ -35,12 +32,7 @@ export default {
         contract = new ethers.Contract(contractAddress, contractAbi, provider);
         console.log(contract); // Add this line
 
-        // Extract function names from the ABI
-        contractAbi.forEach((item) => {
-          if (item.type === "function") {
-            this.contractMethods.push(item.name);
-          }
-        });
+        this.getRegistrationFeeUsd();
       } catch (error) {
         console.error("Failed to enable ethereum or create contract:", error);
       }
@@ -55,8 +47,9 @@ export default {
   methods: {
     getRegistrationFeeUsd: async function () {
       try {
-        const registrationFeeUsd = await contract.registrationFeeUsd;
-        console.log("Registration Fee USD:", registrationFeeUsd.toString());
+        const registrationFeeUsd = await contract.registrationFeeUsd();
+        // Convert the returned ethers.BigNumber to a normal number
+        this.registrationFeeUsd = registrationFeeUsd.toString();
       } catch (error) {
         console.error("Fetching registration fee failed:", error);
       }

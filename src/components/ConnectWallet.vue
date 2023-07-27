@@ -10,13 +10,11 @@
 </template>
 
 <script>
-import Web3 from "web3";
-import BigNumber from "bignumber.js";
+import { ethers } from "ethers";
 import { USDC_ABI, USDC_ADDRESS } from "../config";
 
-const web3 = new Web3(window.ethereum);
-const usdcContractAddress = USDC_ADDRESS;
-const usdcContractAbi = USDC_ABI;
+let provider;
+let usdcContract;
 
 export default {
   data() {
@@ -28,22 +26,33 @@ export default {
   },
   methods: {
     connectWallet: async function () {
-      const accounts = await window.ethereum.request({
-        method: "eth_requestAccounts",
-      });
-      this.address = accounts[0];
-      this.ethBalance = new BigNumber(await web3.eth.getBalance(this.address))
-        .div(1e18)
-        .toString();
-      const usdcContract = new web3.eth.Contract(
-        usdcContractAbi,
-        usdcContractAddress
-      );
-      this.usdcBalance = new BigNumber(
-        await usdcContract.methods.balanceOf(this.address).call()
-      )
-        .div(1e6)
-        .toString();
+      // Modern dapp browsers...
+      if (window.ethereum) {
+        try {
+          // Request account access if needed
+          await window.ethereum.enable();
+          provider = new ethers.BrowserProvider(window.ethereum);
+          const signer = await provider.getSigner();
+          this.address = await signer.getAddress();
+
+          // Get ETH Balance
+          const balance = await provider.getBalance(this.address);
+          this.ethBalance = ethers.formatEther(balance);
+
+          // Get USDC Balance
+          usdcContract = new ethers.Contract(USDC_ADDRESS, USDC_ABI, signer);
+          const usdcBalance = await usdcContract.balanceOf(this.address);
+          this.usdcBalance = ethers.formatUnits(usdcBalance, 6); // USDC has 6 decimals
+        } catch (error) {
+          console.error("Failed to connect wallet:", error);
+        }
+      }
+      // Non-dapp browsers...
+      else {
+        console.log(
+          "Non-Ethereum browser detected. You should consider trying MetaMask!"
+        );
+      }
     },
   },
 };
